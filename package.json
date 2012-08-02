@@ -1,0 +1,28 @@
+{
+  "name": "nat-pmp",
+  "version": "0.0.0",
+  "description": "Node.js implementation of the NAT Port Mapping Protocol",
+  "author": "Nathan Rajlich <nathan@tootallnate.net> (http://tootallnate.net)",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/TooTallNate/node-nat-pmp.git"
+  },
+  "keywords": [
+    "nat",
+    "pmp",
+    "nat-pmp",
+    "port",
+    "forward",
+    "map",
+    "mapping",
+    "protocol"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "debug": "~0.7.0"
+  }
+}
