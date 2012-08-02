@@ -53,6 +53,12 @@ client.portMapping({ private: 22, public: 2222, ttl: 3600 }, function (err, info
 ```
 
 
+API
+---
+
+
+
+
 License
 -------
 
