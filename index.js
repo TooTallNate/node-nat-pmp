@@ -26,6 +26,27 @@ exports.CLIENT_PORT = 5350;
 exports.SERVER_PORT = 5351;
 
 /**
+ * The opcodes for client requests.
+ */
+
+exports.OP_EXTERNAL_IP = 0;
+exports.OP_MAP_TCP = 1;
+exports.OP_MAP_UDP = 2;
+
+/**
+ * Map of result codes the gateway sends back when mapping a port.
+ */
+
+exports.RESULT_CODES = {
+  0: 'Success',
+  1: 'Unsupported Version',
+  2: 'Not Authorized/Refused (gateway may have NAT-PMP disabled)',
+  3: 'Network Failure (gateway may have not obtained a DHCP lease)',
+  4: 'Out of Resources (no ports left)',
+  5: 'Unsupported opcode'
+};
+
+/**
  * The NAT-PMP "Client" class.
  */
 
@@ -51,19 +72,59 @@ inherits(Client, EventEmitter);
 exports.Client = Client;
 
 /**
- *
+ * Queues a UDP request to be send to the gateway device.
  */
 
-Client.prototype.request = function (op, obj) {
-  var message = new Buffer(2);
+Client.prototype.request = function (op, obj, cb) {
+  if (typeof obj === 'function') {
+    cb = obj;
+    obj = null;
+  }
+  var size;
+  switch (op) {
+    case 0:
+      size = 2;
+      break;
+    case 1:
+    case 2:
+      size = 12;
+      break;
+    default:
+      throw new Error('Invalid OP code: ' + op);
+  }
+
+  var req = new Buffer(size);
 
   // Public address request
-  message[0] = 0;
-  message[1] = 0;
+  req[0] = 0;
+  req[1] = 0;
 
-  client.send(message, 0, message.length, exports.SERVER_PORT, gateway, function (err, bytes) {
+  this.socket.send(req, 0, size, exports.SERVER_PORT, this.gateway, function (err, bytes) {
     if (err) throw err;
   });
+};
+
+Client.prototype.externalIp = function (cb) {
+  this.request(exports.OP_EXTERNAL_IP, cb);
+};
+
+Client.prototype.portMapping = function (opts, cb) {
+  var opcode;
+  switch (String(opts.type || 'tcp').toLowerCase()) {
+    case 'tcp':
+      opcode = exports.OP_MAP_TCP;
+      break;
+    case 'udp':
+      opcode = exports.OP_MAP_UDP;
+      break;
+    default:
+      throw new Error('"type" must be either "tcp" or "udp"');
+  }
+  this.request(opcode)
+};
+
+Client.prototype.close = function () {
+  this.socket.close();
 };
 
 /**
@@ -97,13 +158,25 @@ Client.prototype.onmessage = function (msg, rinfo) {
   console.log(parsed);
 };
 
+/**
+ * Called for the underlying socket's "close" event.
+ */
+
 Client.prototype.onclose = function () {
   this.listening = false;
 };
 
+/**
+ * Called for the underlying socket's "error" event.
+ */
+
 Client.prototype.onerror = function (err) {
   this.emit('error', err);
 };
+
+/**
+ * Processes the next request.
+ */
 
 Client.prototype._next = function () {
   var req = this._queue.shift();
