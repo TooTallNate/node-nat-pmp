@@ -130,9 +130,17 @@ Client.prototype.request = function (op, obj, cb) {
   this._next();
 };
 
+/**
+ * Sends a request to the server for the current external IP address.
+ */
+
 Client.prototype.externalIp = function (cb) {
   this.request(exports.OP_EXTERNAL_IP, cb);
 };
+
+/**
+ * Sets up a new port mapping.
+ */
 
 Client.prototype.portMapping = function (opts, cb) {
   var opcode;
