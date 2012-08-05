@@ -91,15 +91,19 @@ Client.prototype.request = function (op, obj, cb) {
       if (!obj) {
         throw new Error('mapping a port requires an "options" object');
       }
-      var internal = +(obj.private || obj.internal);
-      if (internal !== internal | 0) {
+      var internal = +(obj.private || obj.internal || 0);
+      if (internal !== (internal | 0) || internal < 0) {
         throw new Error('the "private" port must be a whole integer >= 0');
       }
-      var external = +(obj.public || obj.external);
-      if (external !== external | 0) {
+      var external = +(obj.public || obj.external || 0);
+      if (external !== (external | 0) || external < 0) {
         throw new Error('the "public" port must be a whole integer >= 0');
       }
-      var ttl = obj.ttl || obj.TTL || 3600;
+      var ttl = +(obj.ttl || obj.TTL || 0);
+      if (ttl !== (ttl | 0)) {
+        debug('using default "ttl" value of 3600');
+        ttl = 3600;
+      }
       size = 12;
       buf = new Buffer(size);
       buf.writeUInt8(0, pos); pos++;  // Vers = 0
