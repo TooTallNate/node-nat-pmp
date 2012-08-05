@@ -148,7 +148,6 @@ Client.prototype.portMapping = function (opts, cb) {
  */
 
 Client.prototype._next = function () {
-  console.trace()
   debug('_next');
   if (!this.listening) {
     debug('_next: not "listening" yet, cannot send out request yet');
