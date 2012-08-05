@@ -39,9 +39,11 @@ client.portMapping({ private: 22, public: 2222, ttl: 3600 }, function (err, info
   if (err) throw err;
   console.log(info);
   // {
+  //   type: 'tcp',
   //   epoch: 8922109,
   //   private: 22,
-  //   public: 2222
+  //   public: 2222,
+  //   ...
   // }
 });
 ```
