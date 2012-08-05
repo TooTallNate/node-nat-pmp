@@ -269,6 +269,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
         parsed.private = parsed.internal = msg.readUInt16BE(pos); pos += 2;
         parsed.public = parsed.external = msg.readUInt16BE(pos); pos += 2;
         parsed.ttl = parsed.TTL = msg.readUInt32BE(pos); pos += 4;
+        parsed.type = req.op === 1 ? 'udp' : 'tcp';
         break;
     }
     assert.equal(msg.length, pos);
