@@ -150,6 +150,15 @@ Client.prototype.portMapping = function (opts, cb) {
 };
 
 /**
+ * To unmap a port you simply set the TTL to 0.
+ */
+
+Client.prototype.portUnmapping = function (opts, cb) {
+  opts.ttl = 0;
+  return this.portMapping(opts, cb);
+});
+
+/**
  * Processes the next request if the socket is listening.
  */
 
