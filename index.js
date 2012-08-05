@@ -32,6 +32,7 @@ exports.SERVER_PORT = 5351;
 exports.OP_EXTERNAL_IP = 0;
 exports.OP_MAP_TCP = 1;
 exports.OP_MAP_UDP = 2;
+exports.SERVER_DELTA = 128;
 
 /**
  * Map of result codes the gateway sends back when mapping a port.
@@ -80,28 +81,47 @@ Client.prototype.request = function (op, obj, cb) {
     cb = obj;
     obj = null;
   }
+  var buf;
   var size;
+  var pos = 0;
   switch (op) {
-    case 0:
+    case exports.OP_EXTERNAL_IP:
       size = 2;
+      buf = new Buffer(size);
+      buf.writeUInt8(0, pos); pos++; // Vers = 0
+      buf.writeUInt8(op, pos); pos++; // OP = x
       break;
-    case 1:
-    case 2:
+    case exports.OP_MAP_TCP:
+    case exports.OP_MAP_UDP:
+      if (!obj) {
+        throw new Error('mapping a port requires an "options" object');
+      }
+      var internal = +(obj.private || obj.internal);
+      if (internal !== internal | 0) {
+        throw new Error('the "private" port must be a whole integer >= 0');
+      }
+      var external = +(obj.public || obj.external);
+      if (external !== external | 0) {
+        throw new Error('the "public" port must be a whole integer >= 0');
+      }
+      var ttl = obj.ttl || obj.TTL || 3600;
       size = 12;
+      buf = new Buffer(size);
+      buf.writeUInt8(0, pos); pos++;  // Vers = 0
+      buf.writeUInt8(op, pos); pos++; // OP = x
+      buf.writeUInt16BE(0, pos); pos+=2; // Reserved (MUST be zero)
+      buf.writeUInt16BE(internal, pos); pos+=2; // Internal Port
+      buf.writeUInt16BE(external, pos); pos+=2; // Requested External Port
+      buf.writeUInt32BE(ttl, pos); pos+=4; // Requested Port Mapping Lifetime in Seconds
       break;
     default:
       throw new Error('Invalid OP code: ' + op);
   }
+  assert.equal(pos, size, 'buffer not fully written!');
 
-  var req = new Buffer(size);
-
-  // Public address request
-  req[0] = 0;
-  req[1] = 0;
-
-  this.socket.send(req, 0, size, exports.SERVER_PORT, this.gateway, function (err, bytes) {
-    if (err) throw err;
-  });
+  // queue out the request
+  this._queue.push({ op: op, buf: buf, cb: cb });
+  this._next();
 };
 
 Client.prototype.externalIp = function (cb) {
@@ -120,11 +140,56 @@ Client.prototype.portMapping = function (opts, cb) {
     default:
       throw new Error('"type" must be either "tcp" or "udp"');
   }
-  this.request(opcode)
+  this.request(opcode, opts, cb);
 };
 
+/**
+ * Processes the next request if the socket is listening.
+ */
+
+Client.prototype._next = function () {
+  console.trace()
+  debug('_next');
+  if (!this.listening) {
+    debug('_next: not "listening" yet, cannot send out request yet');
+    return;
+  }
+  if (this._reqActive) {
+    debug('_next: already an active request so waiting...');
+    return;
+  }
+  var req = this._queue[0];
+  if (!req) {
+    debug('_next: nothing to process');
+    return;
+  }
+  this._reqActive = true;
+
+  var self = this;
+  var buf = req.buf;
+  var size = buf.length;
+  var port = exports.SERVER_PORT;
+  var gateway = this.gateway;
+
+  debug('_next: sending request', buf, gateway);
+  this.socket.send(buf, 0, size, port, gateway, function (err, bytes) {
+    if (err) {
+      self.onerror(err);
+    } else if (bytes !== size) {
+      self.onerror(new Error('Entire request buffer not sent. This should not happen!'));
+    }
+  });
+};
+
+/**
+ * Closes the underlying socket.
+ */
+
 Client.prototype.close = function () {
-  this.socket.close();
+  debug('close()');
+  if (this.socket) {
+    this.socket.close();
+  }
 };
 
 /**
@@ -132,6 +197,7 @@ Client.prototype.close = function () {
  */
 
 Client.prototype.onlistening = function () {
+  debug('onlistening');
   this.listening = true;
   this._next();
 };
@@ -141,21 +207,73 @@ Client.prototype.onlistening = function () {
  */
 
 Client.prototype.onmessage = function (msg, rinfo) {
-  var parsed = {};
+  debug('onmessage');
+
+  function cb (err) {
+    debug('invoking "req" callback');
+    if (err) {
+      if (req.cb) {
+        req.cb.call(self, err);
+      } else {
+        self.emit('error', err);
+      }
+    } else if (req.cb) {
+      req.cb.apply(self, arguments);
+    }
+    self._reqActive = false;
+    self._next();
+  }
+
+  var self = this;
+  var req = this._queue[0];
+  //console.error('REQ:', req);
+  //console.error('MSG:', msg);
+  var parsed = { msg: msg };
   var pos = 0;
   parsed.vers = msg.readUInt8(pos); pos++;
-  parsed.OP = msg.readUInt8(pos); pos++;
-  parsed.resultCode = msg.readUInt16BE(pos); pos += 2;
-  parsed.seconds = msg.readUInt32BE(pos); pos += 4;
-  parsed.ip = [];
-  parsed.ip.push(msg.readUInt8(pos)); pos++;
-  parsed.ip.push(msg.readUInt8(pos)); pos++;
-  parsed.ip.push(msg.readUInt8(pos)); pos++;
-  parsed.ip.push(msg.readUInt8(pos)); pos++;
-  assert.equal(msg.length, pos);
+  parsed.op = msg.readUInt8(pos); pos++;
 
-  console.log(rinfo);
-  console.log(parsed);
+  if (parsed.op - exports.SERVER_DELTA !== req.op) {
+    debug('onmessage: WARN: got unexpected message opcode; ignoring', parsed.op);
+    return;
+  }
+
+  // if we got here, then we're gonna invoke the request's callback,
+  // so shift this request off of the queue.
+  debug('removing "req" off of the queue');
+  this._queue.shift();
+
+  if (parsed.vers !== 0) {
+    cb(new Error('"vers" must be 0. Got: ' + parsed.vers));
+    return;
+  }
+
+  parsed.resultCode = msg.readUInt16BE(pos); pos += 2;
+  parsed.epoch = msg.readUInt32BE(pos); pos += 4;
+
+  if (parsed.resultCode === 0) {
+    // success response
+    switch (req.op) {
+      case exports.OP_EXTERNAL_IP:
+        parsed.ip = [];
+        parsed.ip.push(msg.readUInt8(pos)); pos++;
+        parsed.ip.push(msg.readUInt8(pos)); pos++;
+        parsed.ip.push(msg.readUInt8(pos)); pos++;
+        parsed.ip.push(msg.readUInt8(pos)); pos++;
+        break;
+      case exports.OP_MAP_TCP:
+      case exports.OP_MAP_UCP:
+        parsed.private = parsed.internal = msg.readUInt16BE(pos); pos += 2;
+        parsed.public = parsed.external = msg.readUInt16BE(pos); pos += 2;
+        parsed.ttl = parsed.TTL = msg.readUInt32BE(pos); pos += 4;
+        break;
+    }
+    assert.equal(msg.length, pos);
+    cb(null, parsed);
+  } else {
+    // error response
+    cb(new Error(exports.RESULT_CODES[parsed.resultCode]));
+  }
 };
 
 /**
@@ -163,7 +281,9 @@ Client.prototype.onmessage = function (msg, rinfo) {
  */
 
 Client.prototype.onclose = function () {
+  debug('onclose');
   this.listening = false;
+  this.socket = null;
 };
 
 /**
@@ -171,25 +291,14 @@ Client.prototype.onclose = function () {
  */
 
 Client.prototype.onerror = function (err) {
+  debug('onerror', err);
   this.emit('error', err);
-};
-
-/**
- * Processes the next request.
- */
-
-Client.prototype._next = function () {
-  var req = this._queue.shift();
-  if (!req) {
-    debug('_next: nothing to process');
-    return;
-  }
 };
 
 
 function on (name, target) {
   target.socket.on(name, function () {
-    debug('got socket event', name);
+    debug('on: socket event %j', name);
     return target['on' + name].apply(target, arguments);
   });
 }
