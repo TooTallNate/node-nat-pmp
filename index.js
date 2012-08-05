@@ -164,7 +164,7 @@ Client.prototype.portMapping = function (opts, cb) {
 Client.prototype.portUnmapping = function (opts, cb) {
   opts.ttl = 0;
   return this.portMapping(opts, cb);
-});
+};
 
 /**
  * Processes the next request if the socket is listening.
