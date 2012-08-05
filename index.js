@@ -30,8 +30,8 @@ exports.SERVER_PORT = 5351;
  */
 
 exports.OP_EXTERNAL_IP = 0;
-exports.OP_MAP_TCP = 1;
-exports.OP_MAP_UDP = 2;
+exports.OP_MAP_UDP = 1;
+exports.OP_MAP_TCP = 2;
 exports.SERVER_DELTA = 128;
 
 /**
@@ -86,8 +86,8 @@ Client.prototype.request = function (op, obj, cb) {
   var pos = 0;
 
   switch (op) {
-    case exports.OP_MAP_TCP:
     case exports.OP_MAP_UDP:
+    case exports.OP_MAP_TCP:
       if (!obj) {
         throw new Error('mapping a port requires an "options" object');
       }
@@ -263,8 +263,8 @@ Client.prototype.onmessage = function (msg, rinfo) {
         parsed.ip.push(msg.readUInt8(pos)); pos++;
         parsed.ip.push(msg.readUInt8(pos)); pos++;
         break;
-      case exports.OP_MAP_TCP:
       case exports.OP_MAP_UCP:
+      case exports.OP_MAP_TCP:
         parsed.private = parsed.internal = msg.readUInt16BE(pos); pos += 2;
         parsed.public = parsed.external = msg.readUInt16BE(pos); pos += 2;
         parsed.ttl = parsed.TTL = msg.readUInt32BE(pos); pos += 4;
