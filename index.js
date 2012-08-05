@@ -84,13 +84,8 @@ Client.prototype.request = function (op, obj, cb) {
   var buf;
   var size;
   var pos = 0;
+
   switch (op) {
-    case exports.OP_EXTERNAL_IP:
-      size = 2;
-      buf = new Buffer(size);
-      buf.writeUInt8(0, pos); pos++; // Vers = 0
-      buf.writeUInt8(op, pos); pos++; // OP = x
-      break;
     case exports.OP_MAP_TCP:
     case exports.OP_MAP_UDP:
       if (!obj) {
@@ -114,8 +109,15 @@ Client.prototype.request = function (op, obj, cb) {
       buf.writeUInt16BE(external, pos); pos+=2; // Requested External Port
       buf.writeUInt32BE(ttl, pos); pos+=4; // Requested Port Mapping Lifetime in Seconds
       break;
+    case exports.OP_EXTERNAL_IP:
     default:
-      throw new Error('Invalid OP code: ' + op);
+      if (op !== exports.OP_EXTERNAL_IP) {
+        debug('WARN: invalid opcode given', op);
+      }
+      size = 2;
+      buf = new Buffer(size);
+      buf.writeUInt8(0, pos); pos++; // Vers = 0
+      buf.writeUInt8(op, pos); pos++; // OP = x
   }
   assert.equal(pos, size, 'buffer not fully written!');
 
