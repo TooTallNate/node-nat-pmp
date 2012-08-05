@@ -27,12 +27,6 @@ var natpmp = require('nat-pmp');
 var client = natpmp.connect('10.0.1.1');
 
 
-// the "change" event notifies you when the external IP address changes
-client.on('change', function (ip) {
-  console.log('External IP address changed to: %s', ip);
-});
-
-
 // explicitly ask for the current external IP address
 client.externalIp(function (err, ip) {
   if (err) throw err;
