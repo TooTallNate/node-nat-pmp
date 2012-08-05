@@ -212,6 +212,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
 
   function cb (err) {
     debug('invoking "req" callback');
+    self._reqActive = false;
     if (err) {
       if (req.cb) {
         req.cb.call(self, err);
@@ -221,7 +222,6 @@ Client.prototype.onmessage = function (msg, rinfo) {
     } else if (req.cb) {
       req.cb.apply(self, arguments);
     }
-    self._reqActive = false;
     self._next();
   }
 
@@ -249,6 +249,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
     return;
   }
 
+  // common fields
   parsed.resultCode = msg.readUInt16BE(pos); pos += 2;
   parsed.epoch = msg.readUInt32BE(pos); pos += 4;
 
