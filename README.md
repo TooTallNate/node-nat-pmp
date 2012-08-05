@@ -28,9 +28,9 @@ var client = natpmp.connect('10.0.1.1');
 
 
 // explicitly ask for the current external IP address
-client.externalIp(function (err, ip) {
+client.externalIp(function (err, info) {
   if (err) throw err;
-  console.log('Current external IP address: %s', ip);
+  console.log('Current external IP address: %s', info.ip.join('.'));
 });
 
 
