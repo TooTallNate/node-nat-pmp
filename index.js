@@ -273,7 +273,9 @@ Client.prototype.onmessage = function (msg, rinfo) {
     cb(null, parsed);
   } else {
     // error response
-    cb(new Error(exports.RESULT_CODES[parsed.resultCode]));
+    var err = new Error(exports.RESULT_CODES[parsed.resultCode]);
+    err.code = parsed.resultCode;
+    cb(err);
   }
 };
 
