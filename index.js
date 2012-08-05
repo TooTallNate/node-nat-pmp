@@ -48,6 +48,14 @@ exports.RESULT_CODES = {
 };
 
 /**
+ * Creates a Client instance. Familiar API to `net.connect()`.
+ */
+
+exports.connect = function (gateway) {
+  return new Client(gateway);
+};
+
+/**
  * The NAT-PMP "Client" class.
  */
 
