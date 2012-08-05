@@ -251,6 +251,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
 
   // common fields
   parsed.resultCode = msg.readUInt16BE(pos); pos += 2;
+  parsed.resultMessage = exports.RESULT_CODES[parsed.resultCode];
   parsed.epoch = msg.readUInt32BE(pos); pos += 4;
 
   if (parsed.resultCode === 0) {
@@ -274,7 +275,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
     cb(null, parsed);
   } else {
     // error response
-    var err = new Error(exports.RESULT_CODES[parsed.resultCode]);
+    var err = new Error(parsed.resultMessage);
     err.code = parsed.resultCode;
     cb(err);
   }
