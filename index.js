@@ -99,7 +99,7 @@ Client.prototype.request = function (op, obj, cb) {
       if (external !== (external | 0) || external < 0) {
         throw new Error('the "public" port must be a whole integer >= 0');
       }
-      var ttl = +(obj.ttl || obj.TTL || 0);
+      var ttl = +(obj.ttl);
       if (ttl !== (ttl | 0)) {
         debug('using default "ttl" value of 3600');
         ttl = 3600;
@@ -272,7 +272,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
       case exports.OP_MAP_TCP:
         parsed.private = parsed.internal = msg.readUInt16BE(pos); pos += 2;
         parsed.public = parsed.external = msg.readUInt16BE(pos); pos += 2;
-        parsed.ttl = parsed.TTL = msg.readUInt32BE(pos); pos += 4;
+        parsed.ttl = msg.readUInt32BE(pos); pos += 4;
         parsed.type = req.op === 1 ? 'udp' : 'tcp';
         break;
     }
