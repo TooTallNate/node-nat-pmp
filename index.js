@@ -52,7 +52,11 @@ exports.RESULT_CODES = {
  */
 
 exports.connect = function (gateway) {
-  return new Client(gateway);
+  var client = new Client(gateway);
+  process.nextTick(function () {
+    client.connect();
+  });
+  return client;
 };
 
 /**
@@ -75,10 +79,19 @@ function Client (gateway) {
   on('message', this);
   on('close', this);
   on('error', this);
-  this.socket.bind(exports.CLIENT_PORT);
 }
 inherits(Client, EventEmitter);
 exports.Client = Client;
+
+/**
+ * Binds to the nat-pmp Client port.
+ */
+
+Client.prototype.connect = function () {
+  debug('Client#connect()');
+  this._connecting = true;
+  this.socket.bind(exports.CLIENT_PORT);
+};
 
 /**
  * Queues a UDP request to be send to the gateway device.
@@ -89,6 +102,7 @@ Client.prototype.request = function (op, obj, cb) {
     cb = obj;
     obj = null;
   }
+  debug('Client#request()', [op, obj, cb]);
   var buf;
   var size;
   var pos = 0;
@@ -179,21 +193,25 @@ Client.prototype.portUnmapping = function (opts, cb) {
  */
 
 Client.prototype._next = function () {
-  debug('_next');
+  debug('Client#_next()');
+  var req = this._queue[0];
+  if (!req) {
+    debug('_next: nothing to process');
+    return;
+  }
   if (!this.listening) {
     debug('_next: not "listening" yet, cannot send out request yet');
+    if (!this._connecting) {
+      this.connect();
+    }
     return;
   }
   if (this._reqActive) {
     debug('_next: already an active request so waiting...');
     return;
   }
-  var req = this._queue[0];
-  if (!req) {
-    debug('_next: nothing to process');
-    return;
-  }
   this._reqActive = true;
+  this._req = req;
 
   var self = this;
   var buf = req.buf;
@@ -216,7 +234,7 @@ Client.prototype._next = function () {
  */
 
 Client.prototype.close = function () {
-  debug('close()');
+  debug('Client#close()');
   if (this.socket) {
     this.socket.close();
   }
@@ -227,8 +245,10 @@ Client.prototype.close = function () {
  */
 
 Client.prototype.onlistening = function () {
-  debug('onlistening');
+  debug('Client#onlistening()');
   this.listening = true;
+  this._connecting = false;
+  this.emit('listening');
   this._next();
 };
 
@@ -237,7 +257,7 @@ Client.prototype.onlistening = function () {
  */
 
 Client.prototype.onmessage = function (msg, rinfo) {
-  debug('onmessage');
+  debug('Client#onmessage()', [msg, rinfo]);
 
   function cb (err) {
     debug('invoking "req" callback');
@@ -316,7 +336,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
  */
 
 Client.prototype.onclose = function () {
-  debug('onclose');
+  debug('Client#onclose()');
   this.listening = false;
   this.socket = null;
 };
@@ -326,8 +346,12 @@ Client.prototype.onclose = function () {
  */
 
 Client.prototype.onerror = function (err) {
-  debug('onerror', err);
-  this.emit('error', err);
+  debug('Client#onerror()', [err]);
+  if (this._req && this._req.cb) {
+    this._req.cb(err);
+  } else {
+    this.emit('error', err);
+  }
 };
 
 
