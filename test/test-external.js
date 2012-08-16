@@ -1,7 +1,9 @@
 
 var natpmp = require('../');
+var netroute = require('netroute');
+var gateway = netroute.getGateway();
 
-var client = new natpmp.Client('10.0.1.1');
+var client = new natpmp.Client(gateway);
 
 client.externalIp(function (err, info) {
   if (err) throw err;
