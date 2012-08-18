@@ -311,7 +311,7 @@ Client.prototype.onmessage = function (msg, rinfo) {
         parsed.ip.push(msg.readUInt8(pos)); pos++;
         parsed.ip.push(msg.readUInt8(pos)); pos++;
         break;
-      case exports.OP_MAP_UCP:
+      case exports.OP_MAP_UDP:
       case exports.OP_MAP_TCP:
         parsed.private = parsed.internal = msg.readUInt16BE(pos); pos += 2;
         parsed.public = parsed.external = msg.readUInt16BE(pos); pos += 2;
