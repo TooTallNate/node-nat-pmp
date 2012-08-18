@@ -276,8 +276,6 @@ Client.prototype.onmessage = function (msg, rinfo) {
 
   var self = this;
   var req = this._queue[0];
-  //console.error('REQ:', req);
-  //console.error('MSG:', msg);
   var parsed = { msg: msg };
   var pos = 0;
   parsed.vers = msg.readUInt8(pos); pos++;
