@@ -318,6 +318,8 @@ Client.prototype.onmessage = function (msg, rinfo) {
         parsed.ttl = msg.readUInt32BE(pos); pos += 4;
         parsed.type = req.op === 1 ? 'udp' : 'tcp';
         break;
+      default:
+        return cb(new Error('unknown OP code: ' + req.op));
     }
     assert.equal(msg.length, pos);
     cb(null, parsed);
