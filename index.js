@@ -257,6 +257,9 @@ Client.prototype.onlistening = function () {
  */
 
 Client.prototype.onmessage = function (msg, rinfo) {
+  // Ignore message if we're not expecting it
+  if (this._queue.length === 0) return;
+
   debug('Client#onmessage()', [msg, rinfo]);
 
   function cb (err) {
