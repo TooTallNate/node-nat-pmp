@@ -1,4 +1,3 @@
-
 /**
  * Node.js implementation of the NAT Port Mapping Protocol (a.k.a NAT-PMP).
  *
@@ -89,6 +88,9 @@ exports.Client = Client;
 
 Client.prototype.connect = function () {
   debug('Client#connect()');
+  if (this._connecting) {
+    return false;
+  }
   this._connecting = true;
   this.socket.bind(exports.CLIENT_PORT);
 };
