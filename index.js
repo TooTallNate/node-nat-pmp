@@ -125,8 +125,9 @@ Client.prototype.request = function (op, obj, cb) {
       }
       var ttl = +(obj.ttl);
       if (ttl !== (ttl | 0)) {
-        debug('using default "ttl" value of 3600');
-        ttl = 3600;
+        // The RECOMMENDED Port Mapping Lifetime is 7200 seconds (two hours).
+        debug('using default "ttl" value of 7200');
+        ttl = 7200;
       }
       size = 12;
       buf = new Buffer(size);
