@@ -1,4 +1,10 @@
 
+1.0.0 / 2016-01-12
+==================
+
+  * index: update default TTL to 7200 (2 hours)
+  * bumping to v1.0.0 major for better semver semantics
+
 0.0.4 / 2016-01-12
 ==================
 
