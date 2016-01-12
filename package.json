@@ -1,6 +1,6 @@
 {
   "name": "nat-pmp",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Node.js implementation of the NAT Port Mapping Protocol",
   "author": "Nathan Rajlich <nathan@tootallnate.net> (http://tootallnate.net)",
   "main": "index.js",
